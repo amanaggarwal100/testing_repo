@@ -47,6 +47,7 @@ jobs:
             --model sonnet
             --max-turns 10
             --allowedTools "Bash(chmod:*),Bash(bash:*),Bash(sh:*)"
+            --append-system-prompt "When asked to review a pull request, always use the data-reviewer subagent in addition to any other tasks."
           #   --system-prompt "Follow our coding standards. Ensure all new code has tests. Use TypeScript for new files."
 
           # Optional: Advanced settings configuration
