@@ -1,1 +1,3 @@
 sysuse auto
+
+sum mpg
