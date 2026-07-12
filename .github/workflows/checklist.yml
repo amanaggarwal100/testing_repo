@@ -1,0 +1,19 @@
+name: PR Checklist
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all checkboxes are ticked
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          UNCHECKED=$(echo "$BODY" | grep -c '\- \[ \]' || true)
+          if [ "$UNCHECKED" -gt 0 ]; then
+            echo "::error::$UNCHECKED unchecked checklist item(s) remain."
+            exit 1
+          fi
+          echo "All checklist items complete ✅"
