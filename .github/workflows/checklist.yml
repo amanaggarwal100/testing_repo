@@ -1,13 +1,24 @@
 name: PR Checklist
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened]
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      - name: Check for override label
+        id: override
+        run: |
+          LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+          if echo "$LABELS" | grep -q '"override-checklist"'; then
+            echo "overridden=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "overridden=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Verify all checkboxes are ticked
+        if: steps.override.outputs.overridden != 'true'
         env:
           BODY: ${{ github.event.pull_request.body }}
         run: |
