@@ -9,6 +9,8 @@ on:
 jobs:
   check-claude-tagged:
     runs-on: ubuntu-latest
+    permissions:
+      statuses: write
     if: github.event.issue.pull_request || github.event.pull_request
     steps:
       - name: Check if already passed
