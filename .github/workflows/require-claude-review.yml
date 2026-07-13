@@ -5,6 +5,8 @@ on:
     types: [created]
   pull_request_review_comment:
     types: [created]
+  pull_request:
+    types: [labeled, unlabeled]
 
 jobs:
   check-claude-tagged:
@@ -28,6 +30,20 @@ jobs:
             });
 
             const sha = pr.data.head.sha;
+
+            // Label override: skip the @claude requirement entirely.
+            const hasOverride = pr.data.labels.some(l => l.name === 'override-claude-review');
+            if (hasOverride) {
+              await github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha,
+                state: 'success',
+                description: 'claude review overridden via label',
+                context: 'check-claude-tagged',
+              });
+              return 'skip';
+            }
 
             const checks = await github.rest.checks.listForRef({
               owner: context.repo.owner,
