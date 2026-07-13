@@ -1,3 +1,3 @@
 sysuse auto
 
-sum mpg
+sum mpg, d
