@@ -1,0 +1,52 @@
+name: Require @claude tag
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  check-claude-tagged:
+    runs-on: ubuntu-latest
+    if: github.event.issue.pull_request
+    steps:
+      - name: Check if already passed
+        id: prior_check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const checks = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.payload.issue.pull_request.head.sha,
+              check_name: 'check-claude-tagged',
+            });
+
+            const alreadyPassed = checks.data.check_runs.some(
+              r => r.name === 'check-claude-tagged' && r.conclusion === 'success'
+            );
+
+            if (alreadyPassed) {
+              console.log('✅ Check already passed, skipping.');
+              return 'skip';
+            }
+            return 'run';
+          result-encoding: string
+
+      - name: Check for @claude mention in any comment
+        if: steps.prior_check.outputs.result != 'skip'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+            });
+
+            const hasClaude = comments.data.some(c => c.body.includes('@claude'));
+
+            if (!hasClaude) {
+              core.setFailed('❌ @claude must be tagged in at least one comment.');
+            } else {
+              console.log('✅ @claude has been tagged in this PR.');
+            }
