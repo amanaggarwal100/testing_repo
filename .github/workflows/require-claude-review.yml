@@ -1,5 +1,5 @@
 name: Require @claude tag
- 
+
 on:
   issue_comment:
     types: [created]
@@ -7,60 +7,43 @@ on:
     types: [created]
   pull_request:
     types: [labeled, unlabeled]
- 
+
 jobs:
   check-claude-tagged:
     runs-on: ubuntu-latest
     permissions:
-      statuses: write
       pull-requests: read
       issues: read
     if: github.event.issue.pull_request || github.event.pull_request
     steps:
-      - name: Check for override label
-        id: override
+      - name: Require @claude tag (unless overridden)
         uses: actions/github-script@v7
         with:
           script: |
             const prNumber = context.payload.issue?.number
               || context.payload.pull_request?.number;
+
             const pr = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: prNumber,
             });
-            const hasOverride = pr.data.labels.some(l => l.name === 'override-claude-review');
-            core.setOutput('overridden', hasOverride ? 'true' : 'false');
- 
-      - name: Check for @claude mention in any comment
-        uses: actions/github-script@v7
-        env:
-          OVERRIDDEN: ${{ steps.override.outputs.overridden }}
-        with:
-          script: |
-            const prNumber = context.payload.issue?.number
-              || context.payload.pull_request?.number;
-            const pr = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-            });
+
+            const overridden = pr.data.labels.some(l => l.name === 'override-claude-review');
+            if (overridden) {
+              core.info('Override label present — skipping @claude tag requirement.');
+              return;
+            }
+
             const comments = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
             });
-            const overridden = process.env.OVERRIDDEN === 'true';
-            const hasClaude = overridden
-              || comments.data.some(c => c.body.includes('@claude'));
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: pr.data.head.sha,
-              state: hasClaude ? 'success' : 'failure',
-              description: overridden
-                ? '✅ claude check overridden'
-                : hasClaude ? '✅ @claude has been tagged' : '❌ @claude must be tagged',
-              context: 'check-claude-tagged',
-            });
-            if (!hasClaude) core.setFailed('@claude must be tagged on the PR before merging.');
+
+            const hasClaude = comments.data.some(c => c.body.includes('@claude'));
+            if (!hasClaude) {
+              core.setFailed('@claude must be tagged on the PR before merging.');
+            } else {
+              core.info('@claude has been tagged.');
+            }
