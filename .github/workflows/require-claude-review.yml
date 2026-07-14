@@ -13,10 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       statuses: write
+      pull-requests: read
+      issues: read
     if: github.event.issue.pull_request || github.event.pull_request
     steps:
-      - name: Check if already passed
-        id: prior_check
+      - name: Check for override label
+        id: override_check
         uses: actions/github-script@v7
         with:
           script: |
@@ -31,7 +33,6 @@ jobs:
 
             const sha = pr.data.head.sha;
 
-            // Label override: skip the @claude requirement entirely.
             const hasOverride = pr.data.labels.some(l => l.name === 'override-claude-review');
             if (hasOverride) {
               await github.rest.repos.createCommitStatus({
@@ -44,27 +45,11 @@ jobs:
               });
               return 'skip';
             }
-
-            const checks = await github.rest.checks.listForRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: sha,
-              check_name: 'check-claude-tagged',
-            });
-
-            const alreadyPassed = checks.data.check_runs.some(
-              r => r.name === 'check-claude-tagged' && r.conclusion === 'success'
-            );
-
-            if (alreadyPassed) {
-              console.log('✅ Check already passed, skipping.');
-              return 'skip';
-            }
             return 'run';
           result-encoding: string
 
       - name: Check for @claude mention in any comment
-        if: steps.prior_check.outputs.result != 'skip'
+        if: steps.override_check.outputs.result != 'skip'
         uses: actions/github-script@v7
         with:
           script: |
