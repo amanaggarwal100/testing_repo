@@ -5,8 +5,6 @@ on:
     types: [created]
   pull_request_review_comment:
     types: [created]
-  pull_request:
-    types: [opened, synchronize, reopened]
 
 jobs:
   check-claude-tagged:
@@ -40,5 +38,6 @@ jobs:
               sha: pr.data.head.sha,
               state: hasClaude ? 'success' : 'failure',
               description: hasClaude ? '✅ @claude has been tagged' : '❌ @claude must be tagged',
-              context: 'claude-tag',
+              context: 'check-claude-tagged',
             });
+            if (!hasClaude) core.setFailed('@claude must be tagged on the PR before merging.');
