@@ -33,8 +33,9 @@ jobs:
             core.setOutput('overridden', hasOverride ? 'true' : 'false');
 
       - name: Check for @claude mention in any comment
-        if: steps.override.outputs.overridden != 'true'
         uses: actions/github-script@v7
+        env:
+          OVERRIDDEN: ${{ steps.override.outputs.overridden }}
         with:
           script: |
             const prNumber = context.payload.issue?.number
@@ -49,8 +50,7 @@ jobs:
               repo: context.repo.repo,
               issue_number: prNumber,
             });
-            const hasClaude = comments.data.some(c => c.body.includes('@claude'));
-            const overridden = steps.override.outputs.overridden === 'true';
+            const overridden = process.env.OVERRIDDEN === 'true';
             const hasClaude = overridden
               || comments.data.some(c => c.body.includes('@claude'));
             await github.rest.repos.createCommitStatus({
@@ -58,7 +58,6 @@ jobs:
               repo: context.repo.repo,
               sha: pr.data.head.sha,
               state: hasClaude ? 'success' : 'failure',
-              description: hasClaude ? '✅ @claude has been tagged' : '❌ @claude must be tagged',
               description: overridden
                 ? '✅ claude check overridden'
                 : hasClaude ? '✅ @claude has been tagged' : '❌ @claude must be tagged',
