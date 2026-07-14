@@ -50,12 +50,18 @@ jobs:
               issue_number: prNumber,
             });
             const hasClaude = comments.data.some(c => c.body.includes('@claude'));
+            const overridden = steps.override.outputs.overridden === 'true';
+            const hasClaude = overridden
+              || comments.data.some(c => c.body.includes('@claude'));
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: pr.data.head.sha,
               state: hasClaude ? 'success' : 'failure',
               description: hasClaude ? '✅ @claude has been tagged' : '❌ @claude must be tagged',
+              description: overridden
+                ? '✅ claude check overridden'
+                : hasClaude ? '✅ @claude has been tagged' : '❌ @claude must be tagged',
               context: 'check-claude-tagged',
             });
             if (!hasClaude) core.setFailed('@claude must be tagged on the PR before merging.');
